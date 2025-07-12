@@ -225,7 +225,7 @@ function formatTimestamp(ts) {
 
 async function carregarDominios() {
   try {
-    const res = await fetch('/log/logs_api.php?action=domains');
+    const res = await fetch('https://cdn.drv.pro/log/logs_api.php?action=domains');
     if (!res.ok) throw new Error('Erro ao buscar domínios');
     const domains = await res.json();
 
@@ -264,7 +264,7 @@ async function carregarDados(page = 1) {
   params.set('page', page);
 
   try {
-    const res = await fetch('/log/logs_api.php?' + params.toString());
+    const res = await fetch('https://cdn.drv.pro/log/logs_api.php?' + params.toString());
     if (!res.ok) throw new Error('Falha ao carregar logs');
     const data = await res.json();
 
