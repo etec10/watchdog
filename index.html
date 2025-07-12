@@ -1,59 +1,668 @@
+<!-- index.html -->
 <!DOCTYPE html>
-<html lang="pt-BR" data-bs-theme="light">
+<html lang="pt-br" data-bs-theme="light">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Exemplo Moderno</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <meta charset="UTF-8" />
+  <title>Dashboard de Logs do Watchdog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <style>
-    body {
-      padding-top: 4rem;
-    }
-    header, footer {
-      background: #f8f9fa;
-      padding: 1rem;
-    }
+      body {
+  padding-bottom: 80px; /* espaço para botão tema fixo */
+}
+
+.table-fixed {
+  table-layout: fixed;
+  word-wrap: break-word;
+}
+
+.log-error {
+  background-color: #f8d7da !important;
+  color: #842029;
+}
+
+.log-warn {
+  background-color: #fff3cd !important;
+  color: #664d03;
+}
+
+.log-info {
+  background-color: #cff4fc !important;
+  color: #055160;
+}
+
+.log-js-error,
+.log-promise-rejection,
+.log-uncaught-exception {
+  background-color: #f8d7da !important;
+  color: #842029;
+}
+
+.log-console-error {
+  background-color: #f5c2c7 !important;
+  color: #842029;
+}
+
+.log-console-warn {
+  background-color: #fff3cd !important;
+  color: #664d03;
+}
+
+.log-console-info {
+  background-color: #cff4fc !important;
+  color: #055160;
+}
+
+.log-fetch-error {
+  background-color: #f8d7da !important;
+  color: #842029;
+}
+
+.log-fetch-success {
+  background-color: #d1e7dd !important;
+  color: #0f5132;
+}
+
+.log-ws-init,
+.log-ws-open,
+.log-ws-close,
+.log-ws-send,
+.log-ws-message {
+  background-color: #d1e7dd !important;
+  color: #0f5132;
+}
+
+.table-wrapper {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+td,
+th {
+  vertical-align: middle !important;
+}
+
+.json-tooltip {
+  max-width: 300px;
+  white-space: pre-wrap;
+  font-family: monospace;
+  font-size: 0.8em;
+}
+
+.json-key {
+  color: #9cdcfe;
+  font-weight: 600;
+}
+
+.json-string {
+  color: #d69d85;
+}
+
+.json-number {
+  color: #b5cea8;
+}
+
+.json-boolean {
+  color: #569cd6;
+  font-weight: 700;
+}
+
+.json-null {
+  color: #808080;
+  font-style: italic;
+}
+
+.json-brace {
+  color: #d4d4d4;
+  font-weight: 700;
+}
+
   </style>
 </head>
 <body>
+<div class="container my-4">
+  <h1 class="mb-4 text-center">Dashboard de Logs do Watchdog</h1>
 
-  <header class="text-center">
-    <h1>Site Moderno</h1>
-    <p class="lead">Layout responsivo com Bootstrap 5</p>
-  </header>
+  <!-- Filtros -->
+  <form id="filterForm" class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="input-group mb-3">
+            <select name="domain" class="form-select" required aria-label="Selecione domínio">
+                <option>Carregando ...</option>
+            </select>
+            <button class="btn btn-sm bg-text-body" id="domainReload">↻</button>
+        </div>
+    </div>
+    <div class="col-md-2"><input type="text" name="type" class="form-control" placeholder="Tipo (ex: js-error)" /></div>
+    <div class="col-md-2"><input type="text" name="ip" class="form-control" placeholder="IP" /></div>
+    <div class="col-md-2"><input type="text" name="loc" class="form-control" placeholder="Localização" /></div>
+    <div class="col-md-2"><input type="text" name="url" class="form-control" placeholder="URL da Página" /></div>
+    <div class="col-12 d-flex gap-2 justify-content-end">
+      <button type="submit" class="btn btn-primary">Filtrar</button>
+      <button type="button" class="btn btn-outline-secondary" onclick="window.location.reload()">Limpar</button>
+    </div>
+  </form>
 
-  <main class="container my-4">
-    <section>
-      <h2>Seção de Conteúdo</h2>
-      <p>Este é um exemplo de conteúdo com layout limpo e responsivo.</p>
-    </section>
-    <section class="row mt-4">
-      <div class="col-md-6">
-        <h3>Coluna 1</h3>
-        <p>Conteúdo da primeira coluna.</p>
+  <ul class="nav nav-tabs" role="tablist" id="tabs">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#stats" type="button">Estatísticas</button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#logs" type="button">Logs</button>
+    </li>
+  </ul>
+
+  <div class="tab-content mt-3">
+    <div class="tab-pane fade show active" id="stats" role="tabpanel">
+      <div class="row mb-4" id="resumoCards"></div>
+      <div class="row g-4">
+        <div class="col-lg-6 col-md-12 mb-3"><canvas id="chartTypes"></canvas></div>
+        <div class="col-lg-6 col-md-12 mb-3"><canvas id="chartIps"></canvas></div>
+        <div class="col-12"><canvas id="chartErrorsByDay"></canvas></div>
       </div>
-      <div class="col-md-6">
-        <h3>Coluna 2</h3>
-        <p>Conteúdo da segunda coluna.</p>
+    </div>
+    <div class="tab-pane fade" id="logs" role="tabpanel">
+      <div class="table-wrapper">
+        <table class="table table-bordered table-hover table-sm table-fixed">
+          <thead class="table-dark sticky-top">
+            <tr>
+              <th style="width: 140px;">Data / Hora</th>
+              <th style="width: 100px;">Tipo</th>
+              <th style="width: 250px;">Dados</th>
+              <th style="width: 120px;">Session ID</th>
+              <th style="width: 120px;">IP</th>
+              <th style="width: 180px;">Localização</th>
+              <th style="width: 250px;">URL</th>
+              <th style="width: 180px;">Browser</th>
+            </tr>
+          </thead>
+          <tbody id="logTableBody"></tbody>
+        </table>
       </div>
-    </section>
-  </main>
+    </div>
+  </div>
 
-  <footer class="text-center">
-    <small>&copy; 2025 Exemplo Moderno. Todos os direitos reservados.</small>
-  </footer>
+  <nav>
+    <ul id="pagination" class="pagination justify-content-center mt-4"></ul>
+  </nav>
+</div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
-    // Alternador de tema claro/escuro
-    document.addEventListener('DOMContentLoaded', () => {
-      const html = document.documentElement;
-      document.body.addEventListener('click', () => {
-        const theme = html.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark';
-        html.setAttribute('data-bs-theme', theme);
-      });
+<div class="modal fade" id="logDetailModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content bg-dark text-light">
+      <div class="modal-header">
+        <h5 class="modal-title">Detalhes do Log</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="logDetailContent" style="font-family: monospace; font-size: 0.9em;"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let chartTypes, chartIps, chartErrorsByDay;
+
+const btnReload = document.getElementById('domainReload');
+const select = document.querySelector('select[name="domain"]');
+
+btnReload.addEventListener('click',(e)=>{
+    e.preventDefault();
+    select.innerHTML = '<option>Carregando ...</option>';
+    carregarDominios();
+})
+// Formatação para timestamp numérico (supondo ms)
+function formatTimestamp(ts) {
+  if (!ts) return '-';
+  const time = ts > 1e12 ? ts : ts * 1000; // se for em s, converte pra ms
+  const date = new Date(time);
+  return date.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'medium' });
+}
+
+async function carregarDominios() {
+  try {
+    const res = await fetch('/log/logs_api.php?action=domains');
+    if (!res.ok) throw new Error('Erro ao buscar domínios');
+    const domains = await res.json();
+
+
+    select.innerHTML = '<option value="">Escolha o domínio</option>';
+
+    if (domains.length === 0) {
+      select.innerHTML = '<option value="">Nenhum domínio encontrado</option>';
+      return;
+    }
+
+    domains.forEach((domain, i) => {
+      const opt = document.createElement('option');
+      opt.value = domain;
+      opt.textContent = domain;
+      if (i === 0) opt.selected = true;
+      select.appendChild(opt);
     });
-  </script>
-  <script src="./script.js"></script>
+
+    carregarDados();
+
+    select.addEventListener('change', () => carregarDados());
+  } catch(e) {
+    alert(e.message);
+  }
+}
+
+document.getElementById('filterForm').addEventListener('submit', e => {
+  e.preventDefault();
+  carregarDados();
+});
+
+async function carregarDados(page = 1) {
+  const form = document.getElementById('filterForm');
+  const params = new URLSearchParams(new FormData(form));
+  params.set('page', page);
+
+  try {
+    const res = await fetch('/log/logs_api.php?' + params.toString());
+    if (!res.ok) throw new Error('Falha ao carregar logs');
+    const data = await res.json();
+
+    // Desempacota os lotes para uma lista única de logs
+    let allLogs = [];
+    if (Array.isArray(data.logs)) {
+      for (const entry of data.logs) {
+        if (Array.isArray(entry)) {
+          // é um lote, concatena
+          allLogs = allLogs.concat(entry);
+        } else {
+          allLogs.push(entry);
+        }
+      }
+    }
+
+    // Atualiza a propriedade global para clique detalhado
+    window.currentLogs = allLogs;
+
+    renderizarTabela(allLogs);
+    renderizarCards(data);
+    atualizarGraficos(data);
+    renderizarPaginacao(data.totalPages, data.currentPage);
+  } catch(e) {
+    alert(e.message);
+  }
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// Exibe dados JSON bonitão com tooltip para detalhar
+function renderizarDadosJSON(data) {
+  const jsonStr = JSON.stringify(data, null, 2);
+  const preview = escapeHtml(JSON.stringify(data).slice(0, 80)) + (jsonStr.length > 80 ? '...' : '');
+  return `<span class="json-tooltip" title="${escapeHtml(jsonStr)}">${preview}</span>`;
+}
+
+function renderizarTabela(logs) {
+  const tbody = document.getElementById('logTableBody');
+  tbody.innerHTML = logs.map(log => {
+    const typeClass = 'log-' + (log.type || 'desconhecido').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const loc = typeof log.location === 'string' ? tryParseJSON(log.location) : (log.location || {});
+    return `
+      <tr class="${typeClass}">
+        <td class="small-text">${formatTimestamp(log.timestamp)}</td>
+        <td><strong>${escapeHtml(log.type || '')}</strong></td>
+        <td style="white-space: pre-wrap;">${renderizarDadosJSON(log.data)}</td>
+        <td class="small-text">${escapeHtml(log.session_id ?? log.sessionId ?? '-')}</td>
+        <td>${escapeHtml(loc.ip || '-')}</td>
+        <td>${escapeHtml([loc.city, loc.region, loc.country].filter(Boolean).join(', ') || '-')}</td>
+        <td class="small-text text-truncate" style="max-width:250px;" title="${escapeHtml(log.url || '-')}">${escapeHtml(log.url || '-')}</td>
+        <td class="small-text text-truncate" style="max-width:180px;" title="${escapeHtml(log.userAgent || '-')}">${escapeHtml(log.userAgent || '-')}</td>
+      </tr>
+    `;
+  }).join('');
+  setupLogClick();
+}
+
+function tryParseJSON(str) {
+  try {
+    return JSON.parse(str);
+  } catch {
+    return {};
+  }
+}
+
+function prepararLogParaPopup(log) {
+  const clone = { ...log };
+
+  if (typeof clone.data === 'string') {
+    clone.data = tryParseJSON(clone.data);
+  }
+
+  if (typeof clone.location === 'string') {
+    clone.location = tryParseJSON(clone.location);
+  }
+
+  if (clone.timestamp) {
+    const time = clone.timestamp > 1e12 ? clone.timestamp : clone.timestamp * 1000;
+    clone.timestampFormatado = new Date(time).toLocaleString('pt-BR', {
+      dateStyle: 'short',
+      timeStyle: 'medium',
+    });
+  }
+
+  if (clone.location && typeof clone.location === 'object') {
+    clone.localizacaoResumida = [
+      clone.location.ip,
+      clone.location.city,
+      clone.location.region,
+      clone.location.country,
+    ]
+      .filter(Boolean)
+      .join(', ');
+  } else {
+    clone.localizacaoResumida = '';
+  }
+
+  return clone;
+}
+
+function setupLogClick() {
+  const tbody = document.getElementById('logTableBody');
+  tbody.querySelectorAll('tr').forEach((row) => {
+    row.style.cursor = 'pointer';
+    row.onclick = () => {
+      const index = Array.from(tbody.children).indexOf(row);
+      if (index < 0) return;
+
+      let log = window.currentLogs[index];
+      if (!log) return;
+
+      const tratado = prepararLogParaPopup(log);
+
+      mostrarDetalhesLog(tratado);
+    };
+
+  });
+}
+
+function mostrarDetalhesLog(log) {
+  const modalContent = document.getElementById('logDetailContent');
+
+  const dados = typeof log.data === 'object' && log.data !== null ? log.data : {};
+
+  const html = `
+    <h5><strong>${escapeHtml(log.type ?? '-')}</strong></h5>
+    <p><strong>Timestamp:</strong> ${formatTimestamp(log.timestamp)}</p>
+    <p><strong>Domínio:</strong> ${escapeHtml(log.domain ?? '-')}</p>
+    <p><strong>Session ID:</strong> ${escapeHtml(log.session_id ?? log.sessionId ?? '-')}</p>
+
+    ${dados.url ? `<p><strong>URL requisitada:</strong> ${escapeHtml(dados.url)}</p>` : ''}
+    ${dados.status ? `<p><strong>Status:</strong> ${escapeHtml(dados.status)}</p>` : ''}
+    ${dados.duration ? `<p><strong>Duração:</strong> ${escapeHtml(dados.duration)} ms</p>` : ''}
+    ${dados.method ? `<p><strong>Método:</strong> ${escapeHtml(dados.method)}</p>` : ''}
+    ${dados.message ? `<p><strong>Mensagem:</strong> ${escapeHtml(dados.message)}</p>` : ''}
+
+    <p><strong>Localização:</strong> ${escapeHtml(log.localizacaoResumida || '-')}</p>
+    <p><strong>IP:</strong> ${escapeHtml(log.location?.ip || '-')}</p>
+
+    <p><strong>URL de origem:</strong> ${escapeHtml(log.url ?? '-')}</p>
+    <p><strong>User Agent:</strong> ${escapeHtml(log.user_agent ?? log.userAgent ?? '-')}</p>
+
+    <details class="mt-3">
+      <summary style="cursor:pointer;">📄 JSON completo</summary>
+      <pre class="mt-2">${escapeHtml(JSON.stringify(log, null, 2))}</pre>
+    </details>
+  `;
+
+  modalContent.innerHTML = html;
+
+  const modal = new bootstrap.Modal(document.getElementById('logDetailModal'));
+  modal.show();
+}
+
+function renderizarCards(data) {
+  let container = document.getElementById('cardsContainer');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'cardsContainer';
+    container.className = 'row g-3 mb-4';
+    document.querySelector('.container').insertBefore(container, document.getElementById('tabs'));
+  }
+
+  const totalLogs = Array.isArray(window.currentLogs) ? window.currentLogs.length : 0;
+  const types = Object.entries(data.typeStats || {});
+  const ips = Object.entries(data.ipStats || {}).slice(0, 5);
+  const totalErrors = Object.values(data.errorStats || {}).reduce((a,b) => a+b, 0);
+
+  container.innerHTML = `
+    <div class="col-md-3">
+      <div class="card text-bg-primary h-100">
+        <div class="card-body">
+          <h5 class="card-title">Total de Logs</h5>
+          <p class="card-text fs-3">${totalLogs}</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-bg-warning h-100">
+        <div class="card-body">
+          <h5 class="card-title">Tipos de Logs</h5>
+          <ul class="mb-0">
+            ${types.map(([type, count]) => `<li>${escapeHtml(type)}: ${count}</li>`).join('')}
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-bg-info h-100">
+        <div class="card-body">
+          <h5 class="card-title">Top 5 IPs</h5>
+          <ul class="mb-0">
+            ${ips.map(([ip, count]) => `<li>${escapeHtml(ip)}: ${count}</li>`).join('')}
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card text-bg-danger h-100">
+        <div class="card-body">
+          <h5 class="card-title">Total de Erros</h5>
+          <p class="card-text fs-3">${totalErrors}</p>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function atualizarGraficos(data) {
+  const destroyChart = chart => chart && chart.destroy();
+
+  destroyChart(chartTypes);
+  destroyChart(chartIps);
+  destroyChart(chartErrorsByDay);
+
+  chartTypes = new Chart(document.getElementById('chartTypes'), {
+    type: 'bar',
+    data: {
+      labels: Object.keys(data.typeStats || {}),
+      datasets: [{
+        label: 'Logs por tipo',
+        data: Object.values(data.typeStats || {}),
+        backgroundColor: 'rgba(54, 162, 235, 0.8)'
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { maxRotation: 45, minRotation: 30 } },
+        y: { beginAtZero: true }
+      }
+    }
+  });
+
+  chartIps = new Chart(document.getElementById('chartIps'), {
+    type: 'bar',
+    data: {
+      labels: Object.keys(data.ipStats || {}).slice(0, 10),
+      datasets: [{
+        label: 'Top 10 IPs',
+        data: Object.values(data.ipStats || {}).slice(0, 10),
+        backgroundColor: 'rgba(255, 99, 132, 0.8)'
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { maxRotation: 45, minRotation: 30 } },
+        y: { beginAtZero: true }
+      }
+    }
+  });
+
+  chartErrorsByDay = new Chart(document.getElementById('chartErrorsByDay'), {
+    type: 'bar',
+    data: {
+      labels: Object.keys(data.errorStats || {}),
+      datasets: [{
+        label: 'Erros por Dia',
+        data: Object.values(data.errorStats || {}),
+        backgroundColor: 'rgba(255, 159, 64, 0.8)'
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { maxRotation: 45, minRotation: 30 } },
+        y: { beginAtZero: true }
+      }
+    }
+  });
+
+  updateChartTheme(document.documentElement.getAttribute('data-bs-theme'));
+}
+
+function renderizarPaginacao(total, atual) {
+  const ul = document.getElementById('pagination');
+  ul.innerHTML = '';
+
+  // Função para criar item de página
+  const criarLi = (num, ativo = false, disabled = false) => {
+    const li = document.createElement('li');
+    li.className = 'page-item' + (ativo ? ' active' : '') + (disabled ? ' disabled' : '');
+    li.innerHTML = `<a class="page-link" href="#" aria-label="Página ${num}">${num}</a>`;
+    if (!disabled) {
+      li.querySelector('a').addEventListener('click', e => {
+        e.preventDefault();
+        carregarDados(num);
+        document.querySelector('.table-wrapper').scrollTop = 0;
+      });
+    }
+    return li;
+  };
+
+  // Renderiza o botão anterior
+  const btnPrev = document.createElement('li');
+  btnPrev.className = 'page-item' + (atual === 1 ? ' disabled' : '');
+  btnPrev.innerHTML = `<a class="page-link" href="#" aria-label="Página anterior">&laquo;</a>`;
+  if (atual > 1) {
+    btnPrev.querySelector('a').addEventListener('click', e => {
+      e.preventDefault();
+      carregarDados(atual - 1);
+      document.querySelector('.table-wrapper').scrollTop = 0;
+    });
+  }
+  ul.appendChild(btnPrev);
+
+  // Página 1
+  ul.appendChild(criarLi(1, atual === 1));
+
+  // Se a página atual estiver longe da 2, coloca reticências
+  if (atual > 4) {
+    const li = document.createElement('li');
+    li.className = 'page-item disabled';
+    li.innerHTML = `<span class="page-link">...</span>`;
+    ul.appendChild(li);
+  }
+
+  // Páginas próximas da atual (antes e depois)
+  const start = Math.max(2, atual - 2);
+  const end = Math.min(total - 1, atual + 2);
+
+  for (let i = start; i <= end; i++) {
+    if (i === 1 || i === total) continue; // Já renderizado primeiro e último
+    ul.appendChild(criarLi(i, i === atual));
+  }
+
+  // Reticências antes da última página
+  if (atual < total - 3) {
+    const li = document.createElement('li');
+    li.className = 'page-item disabled';
+    li.innerHTML = `<span class="page-link">...</span>`;
+    ul.appendChild(li);
+  }
+
+  // Última página, se maior que 1
+  if (total > 1) {
+    ul.appendChild(criarLi(total, atual === total));
+  }
+
+  // Botão próximo
+  const btnNext = document.createElement('li');
+  btnNext.className = 'page-item' + (atual === total ? ' disabled' : '');
+  btnNext.innerHTML = `<a class="page-link" href="#" aria-label="Próxima página">&raquo;</a>`;
+  if (atual < total) {
+    btnNext.querySelector('a').addEventListener('click', e => {
+      e.preventDefault();
+      carregarDados(atual + 1);
+      document.querySelector('.table-wrapper').scrollTop = 0;
+    });
+  }
+  ul.appendChild(btnNext);
+}
+
+
+const themeToggle = document.createElement('button');
+themeToggle.textContent = '🌗 Tema';
+themeToggle.className = 'btn btn-sm btn-outline-secondary position-fixed bottom-0 end-0 m-4 z-3';
+themeToggle.setAttribute('aria-label', 'Alternar tema claro/escuro');
+document.body.appendChild(themeToggle);
+
+themeToggle.onclick = () => {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-bs-theme') || 'light';
+  const next = current === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-bs-theme', next);
+  localStorage.setItem('theme', next); // <- salva no localStorage
+  updateChartTheme(next);
+};
+
+function updateChartTheme(theme) {
+  const fontColor = theme === 'dark' ? '#ddd' : '#222';
+  [chartTypes, chartIps, chartErrorsByDay].forEach(chart => {
+    if (!chart) return;
+    chart.options.scales.x.ticks.color = fontColor;
+    chart.options.scales.y.ticks.color = fontColor;
+    chart.options.plugins.legend.labels.color = fontColor;
+    chart.update();
+  });
+}
+
+// Inicia ao carregar a página
+document.addEventListener('DOMContentLoaded', () => {
+    const savedTheme = localStorage.getItem('theme') || 'light';
+document.documentElement.setAttribute('data-bs-theme', savedTheme);
+updateChartTheme(savedTheme);
+  carregarDominios();
+});
+
+
+</script>
 </body>
 </html>
